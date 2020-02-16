@@ -1,0 +1,23 @@
+[package]
+name = "invidious-tui"
+version = "0.1.0"
+authors = ["cyrusng <cyrus.ng@protonmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tui = "0.8"
+termion = "1.5"
+failure = "0.1"
+dirs = "2.0"
+toml = "0.5"
+log = "0.4"
+fern = "0.5"
+chrono = "0.4"
+reqwest = { version = "0.10", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+futures = "0.3"
+tokio = { version = "0.2", features = ["stream", "io-util", "macros", "uds"] }
+mpv = "0.2"
+serde_json = "1.0"

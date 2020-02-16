@@ -1,0 +1,15 @@
+language: rust
+rust:
+  - stable
+  - beta
+  - nightly
+matrix:
+  allowe_failures:
+    - rust: nightly
+  fast_finish: true
+cache: cargo
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install -y mpv
+script:
+  - cargo build --verbose
