@@ -1,6 +1,7 @@
 use mpv::{
     MpvHandler,
     MpvHandlerBuilder,
+    Event,
 };
 use std::process::Command;
 use std::os::unix::net::UnixStream;
@@ -13,6 +14,7 @@ use serde::Deserialize;
 use std::{
     thread,
     time::Duration,
+    convert::TryInto,
 };
 
 #[derive(Deserialize, Debug)]
@@ -35,6 +37,23 @@ pub struct Player {
 }
 
 impl Player {
+    pub fn track_changed(&mut self) -> bool {
+        if let Some(event) = self.audio.wait_event(0.0) {
+            if let Event::StartFile = event {
+                return true
+            }
+        }
+        false
+    }
+    
+    pub fn get_percent_pos(&self) -> u16 {
+        match self.audio.get_property::<i64>("percent-pos") {
+            Ok(percent) => return percent.try_into().unwrap_or(0),
+            Err(e) => log::error!("Unable to get percent position: {}", e),
+        }
+        0
+    }
+    
     pub fn play(&mut self, url: String, is_video: bool) {
         if is_video {
             if let ActivePlayer::AudioPlayer = self.active {
@@ -92,7 +111,10 @@ impl Player {
             ActivePlayer::VideoPlayer => {
                 if let Some(ref mut stream) = self.video {
                     let cmd = b"{ \"command\": [\"stop\"] }\n";
-                    stream.write_all(cmd).unwrap();
+                    match stream.write_all(cmd) {
+                        Ok(_) => log::info!("Sent 'stop' command"),
+                        Err(e) => log::error!("Failed to send command: {:#?}", e),
+                    }
                     self.video = None;
                 }
             },
@@ -106,10 +128,20 @@ impl Player {
         }
     }
 
+    pub fn stop_all(&mut self) {
+        self.active = ActivePlayer::AudioPlayer;
+        self.stop();
+        self.active = ActivePlayer::VideoPlayer;
+        self.stop()
+    }
+
     pub fn pause_video(&mut self) {
         if let Some(ref mut stream) = self.video {
             let cmd = b"{ \"command\": [\"set_property\", \"pause\", true] }\n";
-            stream.write_all(cmd).unwrap();
+            match stream.write_all(cmd) {
+                Ok(_) => log::info!("Sent pause command"),
+                Err(e) => log::error!("Unable to send command: {:#?}", e),
+            }
         }
     }
 
