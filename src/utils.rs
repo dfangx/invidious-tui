@@ -1,101 +1,161 @@
-use crate::app::{
-    App,
-    PaneType,
-    Pane,
-    ContentType,
+use crate::{
+    ui::views::{
+        WindowType,
+        Window,
+        ContentType,
+    },
+    data::LoadedData,
+    media::{
+        video::Video,
+        channel::Channel,
+        playlist::Playlist,
+        Media,
+        ListItem,
+    },
+    invidious
 };
-use crate::media::Video;
-use crate::media::Media;
 use failure::Error;
-use crate::search;
 use tokio::runtime::Runtime;
+use reqwest::Client;
+use std::sync::{
+    Arc,
+    RwLock,
+};
 
-pub fn swap_focus(app: &mut App, new_focus: PaneType) {
-    app.prev_focused = app.focused;
-    if let Some(pane) = app.panes.get_mut(&app.focused) {
-        pane.has_focus = false;
+const SEARCH_URL: &str = "https://www.invidio.us/api/v1/search";
+
+pub fn get_media(window: &Window, data: &LoadedData) -> Box<dyn Media>{
+    match window.window_type {
+        WindowType::SearchVideos => Box::new(data.search_data.videos.0.read().unwrap()[window.selected].clone()),
+        WindowType::PlaylistVideos => Box::new(data.playlist_videos[window.selected].clone()),
+        WindowType::SearchPlaylists => Box::new(data.search_data.playlists.0.read().unwrap()[window.selected].clone()),
+        WindowType::TrendingVideos => Box::new(data.trending_videos[window.selected].clone()),
+        WindowType::PopularVideos => Box::new(data.popular_videos[window.selected].clone()),
+        WindowType::TopVideos => Box::new(data.top_videos[window.selected].clone()),
+        WindowType::SearchChannels => Box::new(data.search_data.channels.0.read().unwrap()[window.selected].clone()),
+        WindowType::ChannelVideos => Box::new(data.channel_videos[window.selected].clone()),
+        WindowType::ChannelPlaylists => Box::new(data.channel_playlists[window.selected].clone()),
     }
-    app.focused = new_focus;
-    if let Some(pane) = app.panes.get_mut(&app.focused) {
-        pane.has_focus = true;
-    }
-    
-    /*
-    app.panes[app.focused.value()].has_focus = false;
-    app.focused = new_focus;
-    app.panes[app.focused.value()].has_focus = true;
-    */
 }
 
-pub fn get_media(app: &mut App) -> Box<dyn Media>{
-    match app.main_pane {
-        PaneType::SearchResults => {
-            match app.focused {
-                PaneType::Videos => {
-                    if let Some(pane) = app.panes.get(&PaneType::Videos) {
-                        return Box::new(app.loaded_data.search_data.videos.0.read().unwrap()[pane.selected].clone());
-                    }
-                },
-                PaneType::Playlists => {
-                    if let Some(pane) = app.panes.get(&PaneType::Videos) {
-                        return Box::new(app.loaded_data.search_data.playlists.0.read().unwrap()[pane.selected].clone());
-                    }
-                },
-                _ => log::info!("Not implemented yet"),
+pub fn fetch_next_page(client: Client, runtime: Arc<RwLock<Runtime>>, data: &LoadedData, window: &Window) -> Result<(), Error> {
+    //let client = app.client.clone();
+    match window.window_type {
+        WindowType::SearchVideos => {
+            let query = data.search_data.query.clone();
+            let page = data.search_data.videos.1 + 1;
+            let current_data = data.search_data.videos.0.clone();
+            if let ContentType::MediaContent(ref content) = window.content {
+                let content = content.clone();
+                std::thread::spawn(move || {
+                    runtime.write().unwrap().block_on(
+                        async move {
+                            let page_str = page.to_string();
+                            let params = vec![
+                                ("q", query.as_str()),
+                                ("page", page_str.as_str()),
+                                ("type", "video"),
+                                ("sort_by", "relevance"),
+                            ];
+                            let videos = invidious::invidious_videos(params, &client, SEARCH_URL).await;
+                            match videos {
+                                Ok(mut videos) => {
+                                    current_data.write().unwrap().append(&mut videos);
+                                    *content.write().unwrap() = video_to_text(current_data.read().unwrap().to_vec());
+                                },
+                                Err(e) => log::error!("{}", e),
+                            }
+                        });
+                });
             }
-        }
-        _ => log::info!("Not implemented yet"),
-    }
-    Box::new(Video::default())
-}
-pub fn fetch_next_page(app: &mut App) -> Result<(), Error> {
-    let query = app.loaded_data.search_data.query.clone();
-    let client = app.client.clone();
-    match app.focused {
-        PaneType::Videos => {
-            app.loaded_data.search_data.videos.1 += 1;
-            let page = app.loaded_data.search_data.videos.1;
-            let current_data = app.loaded_data.search_data.videos.0.clone();
-            if let Some(pane) = app.panes.get(&app.focused) {
-                if let ContentType::MediaContent(content) = &pane.content {
-                    let content = content.clone();
-                    log::debug!("spawning thread");
-                    std::thread::spawn(move || {
-                        Runtime::new().unwrap().block_on(
-                            async move {
-                                log::debug!("Beginning search: {} {} ", query, page);
-                                let videos = search::search_videos(&query, &client, page).await;
-                                log::debug!("Done search: {:#?}", videos);
-                                match videos {
-                                    Ok(mut videos) => {
-                                        log::debug!("Writing data");
-                                        current_data.write().unwrap().append(&mut videos);
-                                        log::debug!("Writing content");
-                                        *content.write().unwrap() = search::video_to_text(current_data.read().unwrap().to_vec());
-                                        log::debug!("Done");
-                                    },
-                                    Err(e) => log::error!("{}", e),
-                                }
-                            });
-                    });
-                }
+        },
+        WindowType::SearchPlaylists => {
+            let query = data.search_data.query.clone();
+            let page = data.search_data.playlists.1 + 1;
+            let current_data = data.search_data.playlists.0.clone();
+            if let ContentType::MediaContent(ref content) = window.content {
+                let content = content.clone();
+                std::thread::spawn(move || {
+                    runtime.write().unwrap().block_on(
+                        async move {
+                            let page_str = page.to_string();
+                            let params = vec![
+                                ("q", query.as_str()),
+                                ("page", page_str.as_str()),
+                                ("type", "playlist"),
+                                ("sort_by", "relevance"),
+                            ];
+                            let playlists = invidious::invidious_playlists(params, &client, SEARCH_URL).await;
+                            match playlists {
+                                Ok(mut playlists) => {
+                                    current_data.write().unwrap().append(&mut playlists);
+                                    *content.write().unwrap() = playlist_to_text(current_data.read().unwrap().to_vec());
+                                },
+                                Err(e) => log::error!("{}", e),
+                            }
+                        });
+                });
             }
-        }
+        },
+        WindowType::SearchChannels => {
+            let query = data.search_data.query.clone();
+            let page = data.search_data.channels.1 + 1;
+            let current_data = data.search_data.channels.0.clone();
+            if let ContentType::MediaContent(ref content) = window.content {
+                let content = content.clone();
+                std::thread::spawn(move || {
+                    runtime.write().unwrap().block_on(
+                        async move {
+                            let page_str = page.to_string();
+                            let params = vec![
+                                ("q", query.as_str()),
+                                ("page", page_str.as_str()),
+                                ("type", "channel"),
+                                ("sort_by", "relevance"),
+                            ];
+                            let channels = invidious::invidious_channels(params, &client, SEARCH_URL).await;
+                            match channels {
+                                Ok(mut channels) => {
+                                    current_data.write().unwrap().append(&mut channels);
+                                    *content.write().unwrap() = channel_to_text(current_data.read().unwrap().to_vec());
+                                },
+                                Err(e) => log::error!("{}", e),
+                            }
+                        });
+                });
+            }
+        },
         _ => {},
     }
     Ok(())
 }
     
-pub fn next_selection(mut pane: &mut Pane, len: usize) {
-    if pane.selected + 1 < len {
-        pane.selected+=1;
+pub fn next_selection(mut window: &mut Window, len: usize) {
+    if window.selected + 1 < len {
+        window.selected+=1;
     }
 }
 
-pub fn prev_selection(app: &mut App) {
-    if let Some(pane) = app.panes.get_mut(&app.focused) {
-        if pane.selected > 0 {
-            pane.selected-=1;
-        }
+pub fn prev_selection(mut window: &mut Window) {
+    if window.selected > 0 {
+        window.selected-=1;
     }
+}
+
+pub fn video_to_text(videos: Vec<Video>) -> Vec<Vec<String>> {
+    videos.into_iter().map(|item| {
+        item.into_text()
+    }).collect()
+}
+
+pub fn playlist_to_text(playlists: Vec<Playlist>) -> Vec<Vec<String>> {
+    playlists.into_iter().map(|item| {
+        item.into_text()        
+    }).collect()
+}
+
+pub fn channel_to_text(channels: Vec<Channel>) -> Vec<Vec<String>> {
+    channels.into_iter().map(|item| {
+        item.into_text()
+    }).collect()
 }
