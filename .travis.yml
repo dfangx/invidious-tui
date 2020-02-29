@@ -10,6 +10,7 @@ matrix:
 cache: cargo
 before_install:
   - sudo apt-get update
+  - sudo apt-get install -y libmpv-dev
   - sudo apt-get install -y mpv
 script:
   - cargo build --verbose

@@ -1,5 +1,5 @@
-# invidious-tui [![Build Status](https://travis-ci.com/dfangx/invidious-tui.svg?branch=develop)](https://travis-ci.com/dfangx/invidious)
-invidious is a TUI interface for Invidious.
+# invidious-tui [![Build Status](https://travis-ci.com/dfangx/invidious-tui.svg?branch=master)](https://travis-ci.com/dfangx/invidious-tui)
+invidious-tui is a TUI interface for Invidious.
 
 ## Dependencies
 * mpv (for playing videos directly from the application)
