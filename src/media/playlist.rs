@@ -5,11 +5,14 @@ use serde_json::Value;
 use reqwest::Client;
 use crate::{
     player::Player,
-    ui::views::{
-        Window,
-        WindowType,
-        ContentType,
-        View,
+    ui::{
+        views::{
+            Window,
+            WindowType,
+            ContentType,
+            View,
+        },
+        table_info,
     },
     data::LoadedData,
     media::{
@@ -74,18 +77,18 @@ impl Playlist {
 
 impl Media for Playlist {
     fn open(&self, client: &Client, runtime: Arc<RwLock<Runtime>>, loaded_data: &mut LoadedData) -> Result<View, Error> {
-        log::debug!("OPENING PL_VIDEOS");
         let videos = runtime.write().unwrap().block_on(self.get_videos(client, 1))?;
-        log::debug!("PL VIDEOS: {:#?}", videos);
         let video_text = utils::video_to_text(videos.clone());
-        let video_headers = vec!["Title".to_owned(), "Author".to_owned(), "Duration".to_owned()];
+        
         loaded_data.playlist_videos = videos;
-        let window = Window::new(self.title.clone(),
-                  0,
-                  ContentType::MediaContent(Arc::new(RwLock::new(video_text))),
-                  Some(video_headers),
-                  WindowType::PlaylistVideos,
-                  );
+        let window = Window::new(
+            self.title.clone(),
+            0,
+            ContentType::MediaContent(Arc::new(RwLock::new(video_text))),
+            Some(Box::new(table_info::PLAYLIST_VIDEO_HEADERS)),
+            WindowType::PlaylistVideos,
+            Box::new(table_info::DEFAULT_COLUMN_CONSTRAINTS),
+            );
         let view = View::new(vec![window], vec!["Videos".to_owned()]);
         Ok(view)
     }

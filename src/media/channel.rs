@@ -4,11 +4,14 @@ use failure::Error;
 use serde_json::Value;
 use reqwest::Client;
 use crate::{
-    ui::views::{
-        Window,
-        WindowType,
-        ContentType,
-        View,
+    ui::{
+        views::{
+            Window,
+            WindowType,
+            ContentType,
+            View,
+        },
+        table_info,
     },
     data::LoadedData,
     media::{
@@ -79,16 +82,12 @@ impl Channel {
 
 impl Media for Channel {
     fn open(&self, client: &Client, runtime: Arc<RwLock<Runtime>>, loaded_data: &mut LoadedData) -> Result<View, Error> {
-        log::debug!("OPENING CHANNELS");
         let (videos, playlists) = runtime.write().unwrap().block_on(self.get_channel_media(client))?;
-        log::debug!("{:#?}", videos);
-       
+
         let video_title = format!("{}'s Videos", self.author());
         let video_text = utils::video_to_text(videos.clone());
-        let video_headers = vec!["Title".to_owned(), "Author".to_owned(), "Duration".to_owned()];
-        
+
         let playlist_title = format!("{}'s Playlists", self.author());
-        let playlist_headers = vec!["Name".to_owned(), "Author".to_owned(), "# of Videos".to_owned()];
         let playlist_text = utils::playlist_to_text(playlists.clone());
 
         loaded_data.channel_videos = videos;
@@ -100,15 +99,17 @@ impl Media for Channel {
                 video_title,
                 0,
                 ContentType::MediaContent(Arc::new(RwLock::new(video_text))),
-                Some(video_headers),
+                Some(Box::new(table_info::VIDEO_HEADERS)),
                 WindowType::ChannelVideos,
+                Box::new(table_info::VIDEO_COLUMN_CONSTRAINTS),
                 ),
                 Window::new(
                     playlist_title,
                     0,
                     ContentType::MediaContent(Arc::new(RwLock::new(playlist_text))),
-                    Some(playlist_headers),
+                    Some(Box::new(table_info::PLAYLIST_HEADERS)),
                     WindowType::ChannelPlaylists,
+                    Box::new(table_info::DEFAULT_COLUMN_CONSTRAINTS),
                     ),
         ];
         let view = View::new(root_windows, tabs);

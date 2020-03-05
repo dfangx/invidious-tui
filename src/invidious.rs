@@ -56,6 +56,7 @@ pub async fn search(query: String, client: &Client) -> Result<Search, AnyError> 
     let channels_fut = invidious_channels(params, &client, SEARCH_URL);
 
     let (videos, playlists, channels) = futures::try_join!(videos_fut, playlists_fut, channels_fut)?;
+    log::debug!("VIDEOS: {:#?}", videos);
     
     Ok(Search {
         query,

@@ -38,12 +38,15 @@ use events::{
     Event,
 };
 use app::App;
-use ui::views::{
-    ViewType,
-    View,
-    Window,
-    WindowType,
-    ContentType,
+use ui::{
+    table_info,
+    views::{
+        ViewType,
+        View,
+        Window,
+        WindowType,
+        ContentType,
+    },
 };
 
 type Backend = TermionBackend<AlternateScreen<RawTerminal<Stdout>>>;
@@ -96,27 +99,23 @@ fn setup_logger() -> Result<(), fern::InitError> {
 }
 
 fn init_search_view() -> (ViewType, View) {
-    let playlist_headers = vec!["Name".to_owned(), "Author".to_owned(), "# of Videos".to_owned()];
-    let channel_headers = vec!["Name".to_owned(), "# of Subs".to_owned(), "# of Videos".to_owned()];
-    let video_headers = vec!["Title".to_owned(), "Author".to_owned(), "Duration".to_owned()];
     let media_list = vec!["Videos".to_owned(), "Playlists".to_owned(), "Channels".to_owned()];
     let search_windows = vec![
-        Window::new("Videos".to_owned(), 0, ContentType::MediaContent(Arc::new(RwLock::new(vec![]))), Some(video_headers), WindowType::SearchVideos),
-        Window::new("Playlists".to_owned(), 0, ContentType::MediaContent(Arc::new(RwLock::new(vec![]))), Some(channel_headers), WindowType::SearchPlaylists),
-        Window::new("Channels".to_owned(), 0, ContentType::MediaContent(Arc::new(RwLock::new(vec![]))), Some(playlist_headers), WindowType::SearchChannels),
+        Window::new("Videos".to_owned(), 0, ContentType::MediaContent(Arc::new(RwLock::new(vec![]))), Some(Box::new(table_info::VIDEO_HEADERS)), WindowType::SearchVideos, Box::new(table_info::VIDEO_COLUMN_CONSTRAINTS)),
+        Window::new("Playlists".to_owned(), 0, ContentType::MediaContent(Arc::new(RwLock::new(vec![]))), Some(Box::new(table_info::PLAYLIST_HEADERS)), WindowType::SearchPlaylists, Box::new(table_info::DEFAULT_COLUMN_CONSTRAINTS)),
+        Window::new("Channels".to_owned(), 0, ContentType::MediaContent(Arc::new(RwLock::new(vec![]))), Some(Box::new(table_info::CHANNEL_HEADERS)), WindowType::SearchChannels, Box::new(table_info::DEFAULT_COLUMN_CONSTRAINTS)),
     ];
 
     (ViewType::Search, View::new(search_windows, media_list))
 }
 
 fn init_home_view() -> (ViewType, View) {
-    let video_headers = vec!["Title".to_owned(), "Author".to_owned(), "Duration".to_owned()];
     let home_list = vec!["Trending".to_owned(), "Popular".to_owned(), "Top".to_owned()];
 
     let home_windows = vec![
-        Window::new("Trending".to_owned(), 0, ContentType::MediaContent(Arc::new(RwLock::new(vec![]))), Some(video_headers.clone()), WindowType::TrendingVideos),
-        Window::new("Popular".to_owned(), 0, ContentType::MediaContent(Arc::new(RwLock::new(vec![]))), Some(video_headers.clone()), WindowType::PopularVideos),
-        Window::new("Top".to_owned(), 0, ContentType::MediaContent(Arc::new(RwLock::new(vec![]))), Some(video_headers), WindowType::TopVideos),
+        Window::new("Trending".to_owned(), 0, ContentType::MediaContent(Arc::new(RwLock::new(vec![]))), Some(Box::new(table_info::VIDEO_HEADERS)), WindowType::TrendingVideos, Box::new(table_info::VIDEO_COLUMN_CONSTRAINTS)),
+        Window::new("Popular".to_owned(), 0, ContentType::MediaContent(Arc::new(RwLock::new(vec![]))), Some(Box::new(table_info::VIDEO_HEADERS)), WindowType::PopularVideos, Box::new(table_info::VIDEO_COLUMN_CONSTRAINTS)),
+        Window::new("Top".to_owned(), 0, ContentType::MediaContent(Arc::new(RwLock::new(vec![]))), Some(Box::new(table_info::VIDEO_HEADERS)), WindowType::TopVideos, Box::new(table_info::VIDEO_COLUMN_CONSTRAINTS)),
     ];
 
     (ViewType::Home, View::new(home_windows, home_list))

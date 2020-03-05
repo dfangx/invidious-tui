@@ -219,6 +219,54 @@ impl Player {
             _ => {},
         }
     }
+
+    pub fn get_status(&self) -> String {
+        match self.audio.get_property::<&str>("idle-active") {
+            Ok(is_idle) => {
+                if is_idle == "yes"{
+                    return String::from("Idle")
+                }
+                match self.audio.get_property::<bool>("pause") {
+                    Ok(is_paused) => { 
+                        if is_paused {
+                            return String::from("Paused") 
+                        }
+                        return String::from("Playing")
+                    },
+                    Err(_) => return String::from("Idle"),
+                }
+            },
+            Err(_) => return String::from("Idle")
+        }
+    }
+
+    pub fn get_time(&self) -> String {
+        let time = match self.audio.get_property::<i64>("playback-time") {
+            Ok(time) => {
+                let seconds = time;
+                let hours = seconds / 3600;
+                let seconds = seconds % 3600;
+                let minutes = seconds / 60;
+                let seconds = seconds % 60;
+                format!("{:0>2}:{:0>2}:{:0>2}", hours, minutes, seconds)
+            },
+            Err(_) => String::from("00:00:00")
+        };
+        
+        let duration = match self.audio.get_property::<i64>("duration") {
+            Ok(time) => {
+                let seconds = time;
+                let hours = seconds / 3600;
+                let seconds = seconds % 3600;
+                let minutes = seconds / 60;
+                let seconds = seconds % 60;
+                format!("{:0>2}:{:0>2}:{:0>2}", hours, minutes, seconds)
+            },
+            Err(_) => String::from("00:00:00"),
+        };
+
+        format!("{} / {}", time, duration)
+    }
     
     pub fn init_audio() -> Result<MpvHandler, Error> {
         let mut mpv_builder = MpvHandlerBuilder::new()?;

@@ -17,6 +17,8 @@ pub struct Video {
     pub author: String,
     pub author_id: String,
     pub author_url: String,
+    pub published_text: String,
+    pub video_thumbnails: Vec<Thumbnails>,
 }
 
 impl Media for Video {
@@ -45,12 +47,27 @@ impl Media for Video {
     fn author(&self) -> String {
         self.author.clone()
     }
+
+    /*
+    fn open(&self, client: &Client, _: Arc<RwLock<Runtime>>, data: &mut LoadedData)  -> Result<View, Error> {
+
+    }
+    */
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct Thumbnails {
+    pub url: String,
+    pub quality: String,
+    pub width: u32,
+    pub height: u32,
 }
 
 impl ListItem for Video {
     fn into_text(&self) -> Vec<String> {
         let title = self.title.clone();
         let author = self.author.clone();
+        let published = self.published_text.clone();
         let duration = if self.live_now {
             String::from("Live Now")
         }
@@ -62,7 +79,11 @@ impl ListItem for Video {
             let seconds = seconds % 60;
             format!("{:0>2}:{:0>2}:{:0>2}", hours, minutes, seconds)
         };
-        vec![title, author, duration]
+
+        if published.is_empty() {
+            return vec![title, author, duration]
+        }
+        vec![title, author, published, duration]
     }
 }
 
@@ -76,6 +97,8 @@ impl Default for Video {
             author: String::new(),
             author_id: String::new(),
             author_url: String::new(),
+            published_text: String::new(),
+            video_thumbnails: vec![],
         }
     }
 }
