@@ -1,4 +1,5 @@
 pub mod views;
+pub mod table_info;
 
 use tui::{
     backend::Backend,
@@ -25,6 +26,7 @@ use tui::{
     style::{
         Style,
         Color,
+        Modifier,
     },
     symbols::DOT,
 };
@@ -94,7 +96,9 @@ fn draw_player<B>(f: &mut Frame<B>, area: Rect, app: &mut App)
     where
     B: Backend,
 {
+    let state = app.player.get_status();
     Block::default()
+        .title(&state)
         .borders(Borders::ALL)
         .render(f, area);
 
@@ -109,22 +113,35 @@ fn draw_player<B>(f: &mut Frame<B>, area: Rect, app: &mut App)
 
     if app.player.track_changed() {
         app.current_track = match app.media_queue.pop_front() {
-            Some((title, author)) => format!("Now Playing: [{}] {}\n", author, title),
-            None => String::from("No track playing"),
+            Some((title, author, playlist)) => {
+                match playlist {
+                    Some(pl) => format!("[{}] {} by {}\n", pl, title, author),
+                    None => format!("{} by {}\n", title, author)
+                }
+            },
+            None => String::from("None\n"),
         };
     }
     
     app.next_track = match app.media_queue.front() {
-        Some((title, author)) => format!("Next: [{}], {}\n", author, title),
-        None => String::new(),
+        Some((title, author, playlist)) => {
+            match playlist {
+                Some(pl) => format!("[{}] {} by {}\n", pl, title, author),
+                None => format!("{} by {}\n", title, author)
+            }
+        },
+        None => String::from("None\n"),
     };
 
     let text = [
+        Text::styled("Currently Playing: ", Style::default().modifier(Modifier::BOLD)),
         Text::raw(&app.current_track),
+        Text::styled("Next Track: ", Style::default().modifier(Modifier::BOLD)),
         Text::raw(&app.next_track),
     ];
 
     Paragraph::new(text.iter())
+        .wrap(true)
         .render(f, chunks[0]);
 
     draw_progress_bar(f, chunks[1], &app.player);
@@ -135,9 +152,10 @@ fn draw_progress_bar<B>(f: &mut Frame<B>, area: Rect, player: &Player)
     B: Backend,
 {
     let percent = player.get_percent_pos();
+    let time = player.get_time();
 
     Gauge::default()
-        .label("")
+        .label(&time)
         .percent(percent)
         .style(Style::default().fg(Color::Red).bg(Color::Gray))
         .render(f, area)
@@ -197,7 +215,7 @@ fn draw_table<B>(f: &mut Frame<B>,
     });
     let headers = match &pane.headers {
         Some(ref headers) => headers.clone(),
-        None => vec![],
+        None => Box::new([]),
     };
 
     Table::new(
@@ -209,11 +227,7 @@ fn draw_table<B>(f: &mut Frame<B>,
                .border_style(Style::default().fg(Color::White))
                .borders(Borders::ALL)
               )
-        .widths(&[
-                Constraint::Length(50), 
-                Constraint::Length(30),
-                Constraint::Length(10),
-        ])
+        .widths(&pane.column_widths)
         .style(Style::default().fg(Color::White))
         .column_spacing(10)
         .render(f, area);

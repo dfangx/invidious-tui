@@ -1,3 +1,4 @@
+use tui::layout::Constraint;
 use std::sync::{
     Arc,
     RwLock,
@@ -91,16 +92,18 @@ pub struct Window {
     pub title: String,
     pub selected: usize,
     pub content: ContentType,
-    pub headers: Option<Vec<String>>,
+    pub headers: Option<Box<[&'static str]>>,
     pub window_type: WindowType,
+    pub column_widths: Box<[Constraint]>
 }
 
 impl Window {
     pub fn new(title: String, 
                selected: usize,
                content: ContentType,
-               headers: Option<Vec<String>>,
+               headers: Option<Box<[&'static str]>>,
                window_type: WindowType,
+               column_widths: Box<[Constraint]>,
                ) -> Self 
     {
         Window {
@@ -109,6 +112,7 @@ impl Window {
             content,
             headers,
             window_type,
+            column_widths
         }
     }
 }
@@ -121,6 +125,7 @@ impl Default for Window {
             content: ContentType::ListContent(vec![]),
             headers: None,
             window_type: WindowType::SearchVideos,
+            column_widths: Box::new([]),
         }
     }
 }

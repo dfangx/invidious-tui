@@ -6,6 +6,7 @@ use crate::{
     ui::views::{
         ContentType,
         ViewType,
+        WindowType,
     },
     utils,
     invidious,
@@ -156,7 +157,28 @@ pub fn event_handler(key: Key, mut app: &mut App) -> Result<(), Error> {
                     if !app.media_queue.is_empty() {
                         app.media_queue.clear();
                     }
-                    app.media_queue.push_back((media.title(), media.author()));
+                    match window.window_type {
+                        WindowType::SearchPlaylists | WindowType::ChannelPlaylists => {
+                            let client = &app.client;
+                            let runtime = &mut app.runtime;
+                            let view = media.open(client, runtime.clone(), &mut app.loaded_data).unwrap();
+                            if let Some(window) = view.root_windows.get(0) {
+                                if let ContentType::MediaContent(ref content) = window.content {
+                                    let mut text = content.read().unwrap().iter().map(|text| {
+                                        (text[0].clone(), text[1].clone(), Some(window.title.clone()))
+                                    }).collect();
+                                    app.media_queue.push_back((media.title(), media.author(), None));
+                                    app.media_queue.append(&mut text);
+                                }
+                            }
+                            //let text = view.root_windows[0].content.read().unwrap().iter().map(|text| {
+                            //    (text[0], text[1], view.root_windows[0].title.clone())
+                            //}).collect();
+                            //app.media_queue.push_back((media.title(), media.author(), Some(window.title.clone())));
+                        },
+                        _ => app.media_queue.push_back((media.title(), media.author(), None)),
+
+                    }
                     media.play_audio(&mut app.player);
                 }
             }
@@ -167,7 +189,12 @@ pub fn event_handler(key: Key, mut app: &mut App) -> Result<(), Error> {
             if let Some(view) = root_view.get_current_view() {
                 if let Some(window) = view.root_windows.get(view.tabs.selected) {
                     let media = utils::get_media(&window, &app.loaded_data);
-                    app.media_queue.push_back((media.title(), media.author()));
+                    match window.window_type {
+                        WindowType::SearchPlaylists | WindowType::ChannelPlaylists=> app.media_queue.push_back((media.title(), media.author(), Some(window.title.clone()))),
+                        _ => app.media_queue.push_back((media.title(), media.author(), None)),
+
+                    }
+                    
                     media.queue(&mut app.player);
                 }
             }

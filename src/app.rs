@@ -37,7 +37,7 @@ pub struct App {
     pub player: Player,
     pub current_track: String,
     pub next_track: String,
-    pub media_queue: VecDeque<(String, String)>,
+    pub media_queue: VecDeque<(String, String, Option<String>)>,
     
     pub focused_view: ViewType,
     pub view_list: HashMap<ViewType, View>,
@@ -48,8 +48,8 @@ impl App {
         App {
             cmdline_focused: false,
             input: String::new(),
-            current_track: String::new(),
-            next_track: String::new(),
+            current_track: String::from("None\n"),
+            next_track: String::from("None\n"),
             loaded_data: LoadedData::default(),
             client: Client::new(),
             runtime: Arc::new(RwLock::new(Runtime::new().unwrap())),
@@ -85,6 +85,7 @@ impl App {
         self.loaded_data.popular_videos = popular;
         //self.loaded_data.top_videos = top;
     }
+
     pub fn view(mut self, view_type: ViewType, view: View) -> Self {
         self.view_list.insert(view_type, view);
         self
