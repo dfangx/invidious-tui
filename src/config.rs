@@ -26,6 +26,7 @@ pub struct Keybinds {
     pub copy_url: Key,
     pub seek_audio_forward: Key,
     pub seek_audio_backward: Key,
+    pub queue_view: Key,
 }
 
 impl Default for Keybinds {
@@ -41,6 +42,8 @@ impl Default for Keybinds {
            
             home_view: Key::F(1),
             search_view: Key::F(2),
+            queue_view: Key::F(3),
+            
             search: Key::Char('/'),
             
             play_pause: Key::Char(' '),
@@ -83,6 +86,7 @@ pub struct KeybindsAsStr {
     pub copy_url: String,
     pub seek_audio_forward: String,
     pub seek_audio_backward: String,
+    pub queue_view: String,
 }
 
 impl Default for KeybindsAsStr {
@@ -101,6 +105,7 @@ impl Default for KeybindsAsStr {
            
             home_view: String::from("f1"),
             search_view: String::from("f2"),
+            queue_view: String::from("f3"),
             
             audio_only: String::from("a"),
             queue_audio: String::from("A"),
@@ -165,6 +170,7 @@ impl Config {
             copy_url: Self::str_to_key(&mut keybinds_as_str.copy_url),
             seek_audio_forward: Self::str_to_key(&mut keybinds_as_str.seek_audio_forward),
             seek_audio_backward: Self::str_to_key(&mut keybinds_as_str.seek_audio_backward),
+            queue_view: Self::str_to_key(&mut keybinds_as_str.queue_view),
         }
     }
 

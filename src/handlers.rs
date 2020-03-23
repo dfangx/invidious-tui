@@ -87,6 +87,9 @@ pub fn event_handler<B: Backend>(key: Key, mut app: &mut App, _terminal: &mut Te
     else if key == app.config.keys.search_view {
         app.focused_view = ViewType::Search;
     }
+    else if key == app.config.keys.queue_view {
+        app.focused_view = ViewType::Queue;
+    }
     else if key == app.config.keys.search {
         app.cmdline_focused = true;
         //terminal.show_cursor()?;
@@ -153,28 +156,30 @@ pub fn event_handler<B: Backend>(key: Key, mut app: &mut App, _terminal: &mut Te
             if let Some(view) = root_view.get_current_view() {
                 if let Some(window) = view.root_windows.get(view.tabs.selected) {
                     let media = utils::get_media(&window, &app.loaded_data);
-                    if !app.video_queue.is_empty() {
-                        app.video_queue.clear();
-                    }
-                    match window.window_type {
-                        WindowType::SearchPlaylists | WindowType::ChannelPlaylists => {
-                            let client = &app.client;
-                            let runtime = &mut app.runtime;
-                            let view = media.open(client, runtime.clone(), &mut app.loaded_data).unwrap();
-                            if let Some(window) = view.root_windows.get(0) {
-                                if let ContentType::MediaContent(ref content) = window.content {
-                                    let mut text = content.read().unwrap().iter().map(|text| {
-                                        (text[0].clone(), text[1].clone(), Some(window.title.clone()))
-                                    }).collect();
-                                    app.video_queue.push_back((media.title(), media.author(), None));
-                                    app.video_queue.append(&mut text);
+                    if let Some(media) = media {
+                        if !app.video_queue.is_empty() {
+                            app.video_queue.clear();
+                        }
+                        match window.window_type {
+                            WindowType::SearchPlaylists | WindowType::ChannelPlaylists => {
+                                let client = &app.client;
+                                let runtime = &mut app.runtime;
+                                let view = media.open(client, runtime.clone(), &mut app.loaded_data).unwrap();
+                                if let Some(window) = view.root_windows.get(0) {
+                                    if let ContentType::MediaContent(ref content) = window.content {
+                                        let mut text = content.read().unwrap().iter().map(|text| {
+                                            (text[0].clone(), text[1].clone(), Some(window.title.clone()))
+                                        }).collect();
+                                        app.video_queue.push_back((media.title(), media.author(), None));
+                                        app.video_queue.append(&mut text);
+                                    }
                                 }
-                            }
-                        },
-                        _ => app.video_queue.push_back((media.title(), media.author(), None)),
+                            },
+                            _ => app.video_queue.push_back((media.title(), media.author(), None)),
 
+                        }
+                        media.play_video(&mut app.player);
                     }
-                    media.play_video(&mut app.player);
                 }
             }
         }
@@ -187,28 +192,30 @@ pub fn event_handler<B: Backend>(key: Key, mut app: &mut App, _terminal: &mut Te
             if let Some(view) = root_view.get_current_view() {
                 if let Some(window) = view.root_windows.get(view.tabs.selected) {
                     let media = utils::get_media(&window, &app.loaded_data);
-                    if !app.audio_queue.is_empty() {
-                        app.audio_queue.clear();
-                    }
-                    match window.window_type {
-                        WindowType::SearchPlaylists | WindowType::ChannelPlaylists => {
-                            let client = &app.client;
-                            let runtime = &mut app.runtime;
-                            let view = media.open(client, runtime.clone(), &mut app.loaded_data).unwrap();
-                            if let Some(window) = view.root_windows.get(0) {
-                                if let ContentType::MediaContent(ref content) = window.content {
-                                    let mut text = content.read().unwrap().iter().map(|text| {
-                                        (text[0].clone(), text[1].clone(), Some(window.title.clone()))
-                                    }).collect();
-                                    app.audio_queue.push_back((media.title(), media.author(), None));
-                                    app.audio_queue.append(&mut text);
+                    if let Some(media) = media {
+                        if !app.audio_queue.is_empty() {
+                            app.audio_queue.clear();
+                        }
+                        match window.window_type {
+                            WindowType::SearchPlaylists | WindowType::ChannelPlaylists => {
+                                let client = &app.client;
+                                let runtime = &mut app.runtime;
+                                let view = media.open(client, runtime.clone(), &mut app.loaded_data).unwrap();
+                                if let Some(window) = view.root_windows.get(0) {
+                                    if let ContentType::MediaContent(ref content) = window.content {
+                                        let mut text = content.read().unwrap().iter().map(|text| {
+                                            (text[0].clone(), text[1].clone(), Some(window.title.clone()))
+                                        }).collect();
+                                        app.audio_queue.push_back((media.title(), media.author(), None));
+                                        app.audio_queue.append(&mut text);
+                                    }
                                 }
-                            }
-                        },
-                        _ => app.audio_queue.push_back((media.title(), media.author(), None)),
+                            },
+                            _ => app.audio_queue.push_back((media.title(), media.author(), None)),
 
+                        }
+                        media.play_audio(&mut app.player);
                     }
-                    media.play_audio(&mut app.player);
                 }
             }
         }
@@ -218,13 +225,14 @@ pub fn event_handler<B: Backend>(key: Key, mut app: &mut App, _terminal: &mut Te
             if let Some(view) = root_view.get_current_view() {
                 if let Some(window) = view.root_windows.get(view.tabs.selected) {
                     let media = utils::get_media(&window, &app.loaded_data);
-                    match window.window_type {
-                        WindowType::SearchPlaylists | WindowType::ChannelPlaylists=> app.audio_queue.push_back((media.title(), media.author(), Some(window.title.clone()))),
-                        _ => app.audio_queue.push_back((media.title(), media.author(), None)),
+                    if let Some(media) = media {
+                        match window.window_type {
+                            WindowType::SearchPlaylists | WindowType::ChannelPlaylists => app.audio_queue.push_back((media.title(), media.author(), Some(window.title.clone()))),
+                            _ => app.audio_queue.push_back((media.title(), media.author(), None)),
+                        }
 
+                        app.player.queue_audio(media.url());
                     }
-                    
-                    app.player.queue_audio(media.url());
                 }
             }
         }
@@ -234,13 +242,14 @@ pub fn event_handler<B: Backend>(key: Key, mut app: &mut App, _terminal: &mut Te
             if let Some(view) = root_view.get_current_view() {
                 if let Some(window) = view.root_windows.get(view.tabs.selected) {
                     let media = utils::get_media(&window, &app.loaded_data);
-                    match window.window_type {
-                        WindowType::SearchPlaylists | WindowType::ChannelPlaylists=> app.video_queue.push_back((media.title(), media.author(), Some(window.title.clone()))),
-                        _ => app.video_queue.push_back((media.title(), media.author(), None)),
+                    if let Some(media) = media {
+                        match window.window_type {
+                            WindowType::SearchPlaylists | WindowType::ChannelPlaylists => app.video_queue.push_back((media.title(), media.author(), Some(window.title.clone()))),
+                            _ =>  app.video_queue.push_back((media.title(), media.author(), None)),
+                        }
 
+                        app.player.queue_video(media.url());
                     }
-                    
-                    app.player.queue_video(media.url());
                 }
             }
         }
@@ -250,10 +259,12 @@ pub fn event_handler<B: Backend>(key: Key, mut app: &mut App, _terminal: &mut Te
             if let Some(view) = root_view.get_current_view_mut() {
                 if let Some(window) = view.root_windows.get(view.tabs.selected) {
                     let media = utils::get_media(&window, &app.loaded_data);
-                    let client = &app.client;
-                    let runtime = &mut app.runtime;
-                    let new_view = media.open(client, runtime.clone(), &mut app.loaded_data).unwrap();
-                    root_view.view_stack.push(new_view);
+                    if let Some(media) = media {
+                        let client = &app.client;
+                        let runtime = &mut app.runtime;
+                        let new_view = media.open(client, runtime.clone(), &mut app.loaded_data).unwrap();
+                        root_view.view_stack.push(new_view);
+                    }
                 }
             }
         }
@@ -266,12 +277,14 @@ pub fn event_handler<B: Backend>(key: Key, mut app: &mut App, _terminal: &mut Te
             if let Some(view) = root_view.get_current_view_mut() {
                 if let Some(window) = view.root_windows.get(view.tabs.selected) {
                     let media = utils::get_media(&window, &app.loaded_data);
-                    match app.clipboard.set_contents(media.url()) {
-                        Ok(_) => {
-                            log::info!("Yanked {} to clipboard", media.url());
-                            app.input = format!("Yanked {} to clipboard", media.url());
-                        },
-                        Err(e) => log::error!("Could not yank {} to clipboard: {:#?}", media.url(), e),
+                    if let Some(media) = media {
+                        match app.clipboard.set_contents(media.url()) {
+                            Ok(_) => {
+                                log::info!("Yanked {} to clipboard", media.url());
+                                app.input = format!("Yanked {} to clipboard", media.url());
+                            },
+                            Err(e) => log::error!("Could not yank {} to clipboard: {:#?}", media.url(), e),
+                        }
                     }
                 }
             }
@@ -283,5 +296,6 @@ pub fn event_handler<B: Backend>(key: Key, mut app: &mut App, _terminal: &mut Te
     else if key == app.config.keys.seek_audio_backward {
         app.player.seek_audio("-5");
     }
+    
     Ok(())
 }

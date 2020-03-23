@@ -58,9 +58,11 @@ fn main() -> Result<(), Error> {
     let mut terminal = init_term()?;
     let (search_view_type, search_view) = init_search_view();
     let (home_view_type, home_view) = init_home_view();
+    let (queue_view_type, queue_view) = init_queue_view();
     let mut app = App::new(config)
         .view(search_view_type, search_view)
-        .view(home_view_type, home_view);
+        .view(home_view_type, home_view)
+        .view(queue_view_type, queue_view); 
     app.run_setup();
 
     while !app.quit {
@@ -68,6 +70,7 @@ fn main() -> Result<(), Error> {
             handlers::event_handler(key, &mut app, &mut terminal)?;
         }
         ui::draw(&mut terminal, &mut app)?;
+        utils::update_queue_view(&mut app);
     }
 
     Ok(())
@@ -119,4 +122,13 @@ fn init_home_view() -> (ViewType, View) {
     ];
 
     (ViewType::Home, View::new(home_windows, home_list, String::from("Home")))
+}
+
+fn init_queue_view() -> (ViewType, View) {
+    let queue_list = vec!["Audio Queue".to_owned(), "Video Queue".to_owned()];
+    let queue_windows = vec![
+        Window::new("Audio Queue".to_owned(), 0, ContentType::MediaContent(Arc::new(RwLock::new(vec![]))), Some(Box::new(table_info::QUEUE_HEADERS)), WindowType::AudioQueue, Box::new(table_info::QUEUE_COLUMN_CONSTRAINTS)),
+        Window::new("Video Queue".to_owned(), 0, ContentType::MediaContent(Arc::new(RwLock::new(vec![]))), Some(Box::new(table_info::QUEUE_HEADERS)), WindowType::VideoQueue, Box::new(table_info::QUEUE_COLUMN_CONSTRAINTS)),
+    ];
+    (ViewType::Queue, View::new(queue_windows, queue_list, String::from("Queued Tracks")))
 }

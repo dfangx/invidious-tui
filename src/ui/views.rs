@@ -8,6 +8,7 @@ use std::sync::{
 pub enum ViewType {
     Search,
     Home,
+    Queue,
 }
 
 #[derive(Clone, Debug)]
@@ -27,6 +28,8 @@ pub enum WindowType {
     SearchPlaylists,
     ChannelVideos,
     ChannelPlaylists,
+    VideoQueue,
+    AudioQueue,
 }
 
 #[derive(Clone, Debug)]

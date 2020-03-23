@@ -1,8 +1,10 @@
 use crate::{
+    app::App,
     ui::views::{
         WindowType,
         Window,
         ContentType,
+        ViewType,
     },
     data::LoadedData,
     media::{
@@ -24,17 +26,18 @@ use std::sync::{
 
 const SEARCH_URL: &str = "https://www.invidio.us/api/v1/search";
 
-pub fn get_media(window: &Window, data: &LoadedData) -> Box<dyn Media>{
+pub fn get_media(window: &Window, data: &LoadedData) -> Option<Box<dyn Media>>{
     match window.window_type {
-        WindowType::SearchVideos => Box::new(data.search_data.videos.0.read().unwrap()[window.selected].clone()),
-        WindowType::PlaylistVideos => Box::new(data.playlist_videos[window.selected].clone()),
-        WindowType::SearchPlaylists => Box::new(data.search_data.playlists.0.read().unwrap()[window.selected].clone()),
-        WindowType::TrendingVideos => Box::new(data.trending_videos[window.selected].clone()),
-        WindowType::PopularVideos => Box::new(data.popular_videos[window.selected].clone()),
-        WindowType::TopVideos => Box::new(data.top_videos[window.selected].clone()),
-        WindowType::SearchChannels => Box::new(data.search_data.channels.0.read().unwrap()[window.selected].clone()),
-        WindowType::ChannelVideos => Box::new(data.channel_videos[window.selected].clone()),
-        WindowType::ChannelPlaylists => Box::new(data.channel_playlists[window.selected].clone()),
+        WindowType::SearchVideos => Some(Box::new(data.search_data.videos.0.read().unwrap()[window.selected].clone())),
+        WindowType::PlaylistVideos => Some(Box::new(data.playlist_videos[window.selected].clone())),
+        WindowType::SearchPlaylists => Some(Box::new(data.search_data.playlists.0.read().unwrap()[window.selected].clone())),
+        WindowType::TrendingVideos => Some(Box::new(data.trending_videos[window.selected].clone())),
+        WindowType::PopularVideos => Some(Box::new(data.popular_videos[window.selected].clone())),
+        WindowType::TopVideos => Some(Box::new(data.top_videos[window.selected].clone())),
+        WindowType::SearchChannels => Some(Box::new(data.search_data.channels.0.read().unwrap()[window.selected].clone())),
+        WindowType::ChannelVideos => Some(Box::new(data.channel_videos[window.selected].clone())),
+        WindowType::ChannelPlaylists => Some(Box::new(data.channel_playlists[window.selected].clone())),
+        _ => None
     }
 }
 
@@ -158,4 +161,40 @@ pub fn channel_to_text(channels: Vec<Channel>) -> Vec<Vec<String>> {
     channels.into_iter().map(|item| {
         item.into_text()
     }).collect()
+}
+
+pub fn update_queue_view(app: &mut App) {
+    let audio_queue = app.audio_queue
+        .iter()
+        .map(|(title, author, playlist)| {
+            let title = match playlist {
+                Some(pl) => format!("[{}] {}", pl, title),
+                None => title.to_string(),
+            };
+            vec![title, author.to_string()]
+        })
+    .collect();
+    let video_queue = app.video_queue
+        .iter()
+        .map(|(title, author, playlist)| {
+            let title = match playlist {
+                Some(pl) => format!("[{}] {}", pl, title),
+                None => title.to_string(),
+            };
+            vec![title, author.to_string()]
+        })
+    .collect();
+
+    if let Some(view) = app.view_list.get_mut(&ViewType::Queue) {
+        if let Some(window) = view.root_windows.get_mut(0) {
+            if let ContentType::MediaContent(ref queue_list) = window.content {
+                *queue_list.write().unwrap() = audio_queue;
+            }
+        }
+        if let Some(window) = view.root_windows.get_mut(1) {
+            if let ContentType::MediaContent(ref queue_list) = window.content {
+                *queue_list.write().unwrap() = video_queue;
+            }
+        }
+    }
 }
