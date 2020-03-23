@@ -1,4 +1,8 @@
 use termion::event::Key;
+use tui::{
+    Terminal,
+    backend::Backend,
+};
 use crate::{
     app::{
         App,
@@ -17,12 +21,14 @@ use std::sync::{
     RwLock,
 };
 
-fn cmdline_handler(key: Key, mut app: &mut App) -> Result<(), Error> {
+fn cmdline_handler<B: Backend>(key: Key, mut app: &mut App, terminal: &mut Terminal<B>) -> Result<(), Error> {
     if key == app.config.keys.submit_entry {
+        terminal.hide_cursor()?;
         if let Some(view) = app.view_list.get_mut(&ViewType::Search) {
             let input = app.input.clone();
             let client = &app.client;
-            let search_data = app.runtime.write().unwrap().block_on(invidious::search(input, &client))?;
+            let search_data = app.runtime.write().unwrap().block_on(invidious::search(input, &client));
+            let search_data = search_data.unwrap();
 
             let video_text = utils::video_to_text(search_data.videos.0.read().unwrap().clone());
             let playlist_text = utils::playlist_to_text(search_data.playlists.0.read().unwrap().clone());
@@ -57,15 +63,16 @@ fn cmdline_handler(key: Key, mut app: &mut App) -> Result<(), Error> {
     else if key == Key::Backspace {
         app.input.pop();
         if app.input.is_empty() {
+            terminal.hide_cursor()?;
             app.cmdline_focused = false;
         }
     }
     Ok(())
 }
 
-pub fn event_handler(key: Key, mut app: &mut App) -> Result<(), Error> {
+pub fn event_handler<B: Backend>(key: Key, mut app: &mut App, terminal: &mut Terminal<B>) -> Result<(), Error> {
     if app.cmdline_focused {
-        cmdline_handler(key, app).unwrap();
+        cmdline_handler(key, app, terminal)?;
     }
     else if key == app.config.keys.quit {
         app.quit = true;
@@ -79,6 +86,7 @@ pub fn event_handler(key: Key, mut app: &mut App) -> Result<(), Error> {
     }
     else if key == app.config.keys.search {
         app.cmdline_focused = true;
+        //terminal.show_cursor()?;
         if let Key::Char(c) = key {
             app.input.push(c);
         }
@@ -141,21 +149,8 @@ pub fn event_handler(key: Key, mut app: &mut App) -> Result<(), Error> {
             if let Some(view) = root_view.get_current_view() {
                 if let Some(window) = view.root_windows.get(view.tabs.selected) {
                     let media = utils::get_media(&window, &app.loaded_data);
-                    media.play_video(&mut app.player);
-                }
-            }
-        }
-    }
-    else if key == app.config.keys.play_pause {
-        app.player.toggle_playback();
-    }
-    else if key == app.config.keys.audio_only {
-        if let Some(root_view) = app.view_list.get(&app.focused_view) {
-            if let Some(view) = root_view.get_current_view() {
-                if let Some(window) = view.root_windows.get(view.tabs.selected) {
-                    let media = utils::get_media(&window, &app.loaded_data);
-                    if !app.media_queue.is_empty() {
-                        app.media_queue.clear();
+                    if !app.video_queue.is_empty() {
+                        app.video_queue.clear();
                     }
                     match window.window_type {
                         WindowType::SearchPlaylists | WindowType::ChannelPlaylists => {
@@ -167,16 +162,46 @@ pub fn event_handler(key: Key, mut app: &mut App) -> Result<(), Error> {
                                     let mut text = content.read().unwrap().iter().map(|text| {
                                         (text[0].clone(), text[1].clone(), Some(window.title.clone()))
                                     }).collect();
-                                    app.media_queue.push_back((media.title(), media.author(), None));
-                                    app.media_queue.append(&mut text);
+                                    app.video_queue.push_back((media.title(), media.author(), None));
+                                    app.video_queue.append(&mut text);
                                 }
                             }
-                            //let text = view.root_windows[0].content.read().unwrap().iter().map(|text| {
-                            //    (text[0], text[1], view.root_windows[0].title.clone())
-                            //}).collect();
-                            //app.media_queue.push_back((media.title(), media.author(), Some(window.title.clone())));
                         },
-                        _ => app.media_queue.push_back((media.title(), media.author(), None)),
+                        _ => app.video_queue.push_back((media.title(), media.author(), None)),
+
+                    }
+                    media.play_video(&mut app.player);
+                }
+            }
+        }
+    }
+    else if key == app.config.keys.play_pause {
+        app.player.toggle_audio_playback();
+    }
+    else if key == app.config.keys.audio_only {
+        if let Some(root_view) = app.view_list.get(&app.focused_view) {
+            if let Some(view) = root_view.get_current_view() {
+                if let Some(window) = view.root_windows.get(view.tabs.selected) {
+                    let media = utils::get_media(&window, &app.loaded_data);
+                    if !app.audio_queue.is_empty() {
+                        app.audio_queue.clear();
+                    }
+                    match window.window_type {
+                        WindowType::SearchPlaylists | WindowType::ChannelPlaylists => {
+                            let client = &app.client;
+                            let runtime = &mut app.runtime;
+                            let view = media.open(client, runtime.clone(), &mut app.loaded_data).unwrap();
+                            if let Some(window) = view.root_windows.get(0) {
+                                if let ContentType::MediaContent(ref content) = window.content {
+                                    let mut text = content.read().unwrap().iter().map(|text| {
+                                        (text[0].clone(), text[1].clone(), Some(window.title.clone()))
+                                    }).collect();
+                                    app.audio_queue.push_back((media.title(), media.author(), None));
+                                    app.audio_queue.append(&mut text);
+                                }
+                            }
+                        },
+                        _ => app.audio_queue.push_back((media.title(), media.author(), None)),
 
                     }
                     media.play_audio(&mut app.player);
@@ -184,18 +209,34 @@ pub fn event_handler(key: Key, mut app: &mut App) -> Result<(), Error> {
             }
         }
     }
-    else if key == app.config.keys.queue {
+    else if key == app.config.keys.queue_audio {
         if let Some(root_view) = app.view_list.get(&app.focused_view) {
             if let Some(view) = root_view.get_current_view() {
                 if let Some(window) = view.root_windows.get(view.tabs.selected) {
                     let media = utils::get_media(&window, &app.loaded_data);
                     match window.window_type {
-                        WindowType::SearchPlaylists | WindowType::ChannelPlaylists=> app.media_queue.push_back((media.title(), media.author(), Some(window.title.clone()))),
-                        _ => app.media_queue.push_back((media.title(), media.author(), None)),
+                        WindowType::SearchPlaylists | WindowType::ChannelPlaylists=> app.audio_queue.push_back((media.title(), media.author(), Some(window.title.clone()))),
+                        _ => app.audio_queue.push_back((media.title(), media.author(), None)),
 
                     }
                     
-                    media.queue(&mut app.player);
+                    app.player.queue_audio(media.url());
+                }
+            }
+        }
+    }
+    else if key == app.config.keys.queue_video {
+        if let Some(root_view) = app.view_list.get(&app.focused_view) {
+            if let Some(view) = root_view.get_current_view() {
+                if let Some(window) = view.root_windows.get(view.tabs.selected) {
+                    let media = utils::get_media(&window, &app.loaded_data);
+                    match window.window_type {
+                        WindowType::SearchPlaylists | WindowType::ChannelPlaylists=> app.video_queue.push_back((media.title(), media.author(), Some(window.title.clone()))),
+                        _ => app.video_queue.push_back((media.title(), media.author(), None)),
+
+                    }
+                    
+                    app.player.queue_video(media.url());
                 }
             }
         }
@@ -212,6 +253,9 @@ pub fn event_handler(key: Key, mut app: &mut App) -> Result<(), Error> {
                 }
             }
         }
+    }
+    else if key == app.config.keys.loop_audio {
+        app.player.toggle_loop_audio();
     }
     Ok(())
 }
