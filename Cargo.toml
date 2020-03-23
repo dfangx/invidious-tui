@@ -3,6 +3,13 @@ name = "invidious-tui"
 version = "0.1.0"
 authors = ["cyrusng <cyrus.ng@protonmail.com>"]
 edition = "2018"
+homepage = "https://github.com/dfangx/invidious-tui"
+description = "A text user interface for browsing and watching videos through the invidious API"
+documentation = "https://github.com/dfangx/invidious-tui"
+repository = "https://github.com/dfangx/invidious-tui"
+readme = "README.md"
+license = "MIT"
+keywords = ["video", "invidious", "youtube"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
