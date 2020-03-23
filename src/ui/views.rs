@@ -33,11 +33,13 @@ pub enum WindowType {
 pub struct TabState {
     pub selected: usize,
     pub items: Vec<String>,
+    pub title: String,
 }
 
 impl TabState {
-    pub fn new(items: Vec<String>) -> Self {
+    pub fn new(items: Vec<String>, title: String) -> Self {
         TabState {
+            title,
             items,
             selected: 0,
         }
@@ -52,9 +54,9 @@ pub struct View {
 }
 
 impl View {
-    pub fn new(root_windows: Vec<Window>, tabs: Vec<String>) -> Self {
+    pub fn new(root_windows: Vec<Window>, tabs: Vec<String>, tab_title: String) -> Self {
         View {
-            tabs: TabState::new(tabs),
+            tabs: TabState::new(tabs, tab_title),
             view_stack: vec![],
             root_windows,
         }

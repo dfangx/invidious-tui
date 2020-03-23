@@ -10,6 +10,7 @@ use crate::{
     },
 };
 
+#[derive(Debug)]
 pub struct Search {
     pub query: String,
     pub videos: (Arc<RwLock<Vec<Video>>>, u32),
