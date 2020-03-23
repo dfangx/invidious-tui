@@ -12,36 +12,44 @@ pub struct Keybinds {
     pub move_right: Key,
     pub move_down: Key,
     pub move_up: Key,
-    //pub enter_selection_mode: Key,
     pub submit_entry: Key,
     pub back: Key,
     pub open_selection: Key,
     pub search: Key,
     pub play_pause: Key,
     pub audio_only: Key,
-    pub queue: Key,
+    pub queue_video: Key,
+    pub queue_audio: Key,
     pub home_view: Key,
     pub search_view: Key,
+    pub loop_audio: Key,
 }
 
 impl Default for Keybinds {
     fn default() -> Self {
         Keybinds {
-            quit: Key::Char('q'),
             move_left: Key::Char('h'),
             move_right: Key::Char('l'),
             move_down: Key::Char('j'),
             move_up: Key::Char('k'),
-            //enter_selection_mode: Key::Char('\n'),
-            submit_entry: Key::Char('\n'),
+            
+            quit: Key::Char('q'),
             back: Key::Esc,
-            open_selection: Key::Char('o'),
-            search: Key::Char('/'),
-            play_pause: Key::Char(' '),
-            audio_only: Key::Char('a'),
-            queue: Key::Char('p'),
+           
             home_view: Key::F(1),
             search_view: Key::F(2),
+            search: Key::Char('/'),
+            
+            play_pause: Key::Char(' '),
+            
+            audio_only: Key::Char('a'),
+            queue_audio: Key::Char('A'),
+            loop_audio: Key::Char('L'),
+            
+            open_selection: Key::Char('o'),
+            submit_entry: Key::Char('\n'),
+            
+            queue_video: Key::Char('v'),
         }
     }
 }
@@ -61,29 +69,38 @@ pub struct KeybindsAsStr {
     pub search: String,
     pub play_pause: String,
     pub audio_only: String,
-    pub queue: String,
+    pub queue_video: String,
+    pub queue_audio: String,
     pub home_view: String,
     pub search_view: String,
+    pub loop_audio: String,
 }
 
 impl Default for KeybindsAsStr {
     fn default() -> Self {
         KeybindsAsStr {
-            quit: String::from("q"),
             move_left: String::from("h"),
             move_right: String::from("l"),
             move_down: String::from("j"),
             move_up: String::from("k"),
-            //enter_selection_mode: String::from("enter"),
-            submit_entry: String::from("enter"),
+            
+            quit: String::from("q"),
             back: String::from("esc"),
-            open_selection: String::from("o"),
+            
             search: String::from("/"),
             play_pause: String::from(" "),
-            audio_only: String::from("a"),
-            queue: String::from("p"),
+           
             home_view: String::from("f1"),
             search_view: String::from("f2"),
+            
+            audio_only: String::from("a"),
+            queue_audio: String::from("A"),
+            loop_audio: String::from("L"),
+            
+            open_selection: String::from("o"),
+            submit_entry: String::from("enter"),
+            
+            queue_video: String::from("v"),
         }
     }
 }
@@ -128,9 +145,11 @@ impl Config {
             search: Self::str_to_key(&mut keybinds_as_str.search),
             play_pause: Self::str_to_key(&mut keybinds_as_str.play_pause),
             audio_only: Self::str_to_key(&mut keybinds_as_str.audio_only),
-            queue: Self::str_to_key(&mut keybinds_as_str.queue),
+            queue_video: Self::str_to_key(&mut keybinds_as_str.queue_video),
+            queue_audio: Self::str_to_key(&mut keybinds_as_str.queue_audio),
             home_view: Self::str_to_key(&mut keybinds_as_str.home_view),
             search_view: Self::str_to_key(&mut keybinds_as_str.search_view),
+            loop_audio: Self::str_to_key(&mut keybinds_as_str.loop_audio),
         }
     }
 
