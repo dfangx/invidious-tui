@@ -36,6 +36,7 @@ v | Queue a selection with video (for videos and playlists)
 a | Play selection audio only (for videos and playlists)
 A | Queue a selection audio only (for videos and playlists)
 o | Open selection
+L | Loop current audio
 
 ## Configuration
 Configuration is done in a file config.toml. Most configuration options are in
