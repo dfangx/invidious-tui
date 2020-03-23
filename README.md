@@ -43,3 +43,6 @@ Configuration is done in a file config.toml. Most configuration options are in
 the works, but keybinds should work properly. Your configuration file should be
 placed in `$HOME/.config/`. This feature is pretty preliminary and lots of
 progress still needs to be made.
+
+## License
+This crate is licensed under the MIT/Apache license

@@ -8,7 +8,7 @@ description = "A text user interface for browsing and watching videos through th
 documentation = "https://github.com/dfangx/invidious-tui"
 repository = "https://github.com/dfangx/invidious-tui"
 readme = "README.md"
-license = "MIT"
+license = "MIT OR Apache"
 keywords = ["video", "invidious", "youtube"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
