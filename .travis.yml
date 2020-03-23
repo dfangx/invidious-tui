@@ -13,5 +13,7 @@ before_install:
   - sudo apt-get install -y libmpv-dev
   - sudo apt-get install -y mpv
   - sudo apt-get install -y xorg-dev
+  - sudo apt-get install -y libxcb-shape0-dev
+  - sudo apt-get install -y libxcb-xfixes0-dev
 script:
   - cargo build --verbose
