@@ -1,5 +1,9 @@
 use tokio::runtime::Runtime;
 use reqwest::Client;
+use clipboard::{
+    ClipboardContext,
+    ClipboardProvider,
+};
 use crate::{
     player::Player,
     config::Config,
@@ -44,6 +48,8 @@ pub struct App {
     
     pub focused_view: ViewType,
     pub view_list: HashMap<ViewType, View>,
+
+    pub clipboard: ClipboardContext,
 }
 
 impl App {
@@ -65,6 +71,7 @@ impl App {
             
             focused_view: ViewType::Home,
             view_list: HashMap::new(),
+            clipboard: ClipboardProvider::new().unwrap(),
             config,
         }
     }

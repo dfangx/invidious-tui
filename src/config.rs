@@ -23,6 +23,9 @@ pub struct Keybinds {
     pub home_view: Key,
     pub search_view: Key,
     pub loop_audio: Key,
+    pub copy_url: Key,
+    pub seek_audio_forward: Key,
+    pub seek_audio_backward: Key,
 }
 
 impl Default for Keybinds {
@@ -45,8 +48,11 @@ impl Default for Keybinds {
             audio_only: Key::Char('a'),
             queue_audio: Key::Char('A'),
             loop_audio: Key::Char('L'),
+            seek_audio_forward: Key::Right,
+            seek_audio_backward: Key::Left,
             
             open_selection: Key::Char('o'),
+            copy_url: Key::Char('y'),
             submit_entry: Key::Char('\n'),
             
             queue_video: Key::Char('v'),
@@ -74,6 +80,9 @@ pub struct KeybindsAsStr {
     pub home_view: String,
     pub search_view: String,
     pub loop_audio: String,
+    pub copy_url: String,
+    pub seek_audio_forward: String,
+    pub seek_audio_backward: String,
 }
 
 impl Default for KeybindsAsStr {
@@ -99,6 +108,9 @@ impl Default for KeybindsAsStr {
             
             open_selection: String::from("o"),
             submit_entry: String::from("enter"),
+            copy_url: String::from("y"),
+            seek_audio_forward: String::from("right"),
+            seek_audio_backward: String::from("left"),
             
             queue_video: String::from("v"),
         }
@@ -150,6 +162,9 @@ impl Config {
             home_view: Self::str_to_key(&mut keybinds_as_str.home_view),
             search_view: Self::str_to_key(&mut keybinds_as_str.search_view),
             loop_audio: Self::str_to_key(&mut keybinds_as_str.loop_audio),
+            copy_url: Self::str_to_key(&mut keybinds_as_str.copy_url),
+            seek_audio_forward: Self::str_to_key(&mut keybinds_as_str.seek_audio_forward),
+            seek_audio_backward: Self::str_to_key(&mut keybinds_as_str.seek_audio_backward),
         }
     }
 

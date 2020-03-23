@@ -1,4 +1,5 @@
 use termion::event::Key;
+use clipboard::ClipboardProvider;
 use tui::{
     Terminal,
     backend::Backend,
@@ -21,9 +22,8 @@ use std::sync::{
     RwLock,
 };
 
-fn cmdline_handler<B: Backend>(key: Key, mut app: &mut App, terminal: &mut Terminal<B>) -> Result<(), Error> {
+fn cmdline_handler<B: Backend>(key: Key, mut app: &mut App, _terminal: &mut Terminal<B>) -> Result<(), Error> {
     if key == app.config.keys.submit_entry {
-        terminal.hide_cursor()?;
         if let Some(view) = app.view_list.get_mut(&ViewType::Search) {
             let input = app.input.clone();
             let client = &app.client;
@@ -63,16 +63,19 @@ fn cmdline_handler<B: Backend>(key: Key, mut app: &mut App, terminal: &mut Termi
     else if key == Key::Backspace {
         app.input.pop();
         if app.input.is_empty() {
-            terminal.hide_cursor()?;
             app.cmdline_focused = false;
         }
+    }
+    else if key == app.config.keys.back {
+        app.input = String::new();
+        app.cmdline_focused = false;
     }
     Ok(())
 }
 
-pub fn event_handler<B: Backend>(key: Key, mut app: &mut App, terminal: &mut Terminal<B>) -> Result<(), Error> {
+pub fn event_handler<B: Backend>(key: Key, mut app: &mut App, _terminal: &mut Terminal<B>) -> Result<(), Error> {
     if app.cmdline_focused {
-        cmdline_handler(key, app, terminal)?;
+        cmdline_handler(key, app, _terminal)?;
     }
     else if key == app.config.keys.quit {
         app.quit = true;
@@ -87,6 +90,7 @@ pub fn event_handler<B: Backend>(key: Key, mut app: &mut App, terminal: &mut Ter
     else if key == app.config.keys.search {
         app.cmdline_focused = true;
         //terminal.show_cursor()?;
+        app.input = String::new();
         if let Key::Char(c) = key {
             app.input.push(c);
         }
@@ -256,6 +260,28 @@ pub fn event_handler<B: Backend>(key: Key, mut app: &mut App, terminal: &mut Ter
     }
     else if key == app.config.keys.loop_audio {
         app.player.toggle_loop_audio();
+    }
+    else if key == app.config.keys.copy_url {
+        if let Some(root_view) = app.view_list.get_mut(&app.focused_view) {
+            if let Some(view) = root_view.get_current_view_mut() {
+                if let Some(window) = view.root_windows.get(view.tabs.selected) {
+                    let media = utils::get_media(&window, &app.loaded_data);
+                    match app.clipboard.set_contents(media.url()) {
+                        Ok(_) => {
+                            log::info!("Yanked {} to clipboard", media.url());
+                            app.input = format!("Yanked {} to clipboard", media.url());
+                        },
+                        Err(e) => log::error!("Could not yank {} to clipboard: {:#?}", media.url(), e),
+                    }
+                }
+            }
+        }
+    }
+    else if key == app.config.keys.seek_audio_forward {
+        app.player.seek_audio("5");
+    }
+    else if key == app.config.keys.seek_audio_backward {
+        app.player.seek_audio("-5");
     }
     Ok(())
 }

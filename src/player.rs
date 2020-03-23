@@ -70,6 +70,13 @@ impl Player {
         0
     }
 
+    pub fn seek_audio(&mut self, seek_amnt: &str) {
+        match self.audio.command(&["seek", seek_amnt]) {
+            Ok(_) => log::info!("Successfully moved {} seconds", seek_amnt),
+            Err(e) => log::error!("Unable to seek audio: {}", e),
+        }
+    }
+    
     pub fn play(&mut self, url: String, is_video: bool) {
         if is_video {
             self.pause_audio();
