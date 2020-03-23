@@ -112,7 +112,7 @@ impl Media for Channel {
                     Box::new(table_info::DEFAULT_COLUMN_CONSTRAINTS),
                     ),
         ];
-        let view = View::new(root_windows, tabs);
+        let view = View::new(root_windows, tabs, self.title());
         Ok(view)
     }
     

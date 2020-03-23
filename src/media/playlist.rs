@@ -89,7 +89,7 @@ impl Media for Playlist {
             WindowType::PlaylistVideos,
             Box::new(table_info::DEFAULT_COLUMN_CONSTRAINTS),
             );
-        let view = View::new(vec![window], vec!["Videos".to_owned()]);
+        let view = View::new(vec![window], vec!["Videos".to_owned()], self.title());
         Ok(view)
     }
     
@@ -105,10 +105,8 @@ impl Media for Playlist {
         player.play(url, false);
     }
     
-    fn queue(&self, player: &mut Player){
-        let id = &self.playlist_id;
-        let url = format!("https://invidio.us/playlist?list={}", id);
-        player.queue(url);
+    fn url(&self) -> String {
+        format!("https://invidio.us/playlist?list={}", &self.playlist_id)
     }
     
     fn title(&self) -> String {

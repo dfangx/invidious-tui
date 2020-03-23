@@ -32,7 +32,9 @@ pub trait Media {
         String::new()
     }
 
-    fn queue(&self, _: &mut Player) {}
+    fn url(&self) -> String {
+        String::new()
+    }
 }
 
 

@@ -12,13 +12,12 @@ use crate::{
 pub struct Video {
     pub title: String,
     pub video_id: String,
-    pub length_seconds: u64,
+    pub length_seconds: i64,
     pub live_now: bool,
     pub author: String,
     pub author_id: String,
     pub author_url: String,
     pub published_text: String,
-    pub video_thumbnails: Vec<Thumbnails>,
 }
 
 impl Media for Video {
@@ -34,10 +33,8 @@ impl Media for Video {
         player.play(url, false);
     }
 
-    fn queue(&self, player: &mut Player){
-        let id = &self.video_id;
-        let url = format!("https://invidio.us/watch?v={}", id);
-        player.queue(url);
+    fn url(&self) -> String {
+        format!("https://invidio.us/watch?v={}", &self.video_id)
     }
 
     fn title(&self) -> String {
@@ -53,14 +50,6 @@ impl Media for Video {
 
     }
     */
-}
-
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct Thumbnails {
-    pub url: String,
-    pub quality: String,
-    pub width: u32,
-    pub height: u32,
 }
 
 impl ListItem for Video {
@@ -98,7 +87,6 @@ impl Default for Video {
             author_id: String::new(),
             author_url: String::new(),
             published_text: String::new(),
-            video_thumbnails: vec![],
         }
     }
 }

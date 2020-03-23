@@ -64,10 +64,10 @@ fn main() -> Result<(), Error> {
     app.run_setup();
 
     while !app.quit {
-        ui::draw(&mut terminal, &mut app)?;
         if let Event::Input(key) = events.next()? {
-            handlers::event_handler(key, &mut app)?;
+            handlers::event_handler(key, &mut app, &mut terminal)?;
         }
+        ui::draw(&mut terminal, &mut app)?;
     }
 
     Ok(())
@@ -106,7 +106,7 @@ fn init_search_view() -> (ViewType, View) {
         Window::new("Channels".to_owned(), 0, ContentType::MediaContent(Arc::new(RwLock::new(vec![]))), Some(Box::new(table_info::CHANNEL_HEADERS)), WindowType::SearchChannels, Box::new(table_info::DEFAULT_COLUMN_CONSTRAINTS)),
     ];
 
-    (ViewType::Search, View::new(search_windows, media_list))
+    (ViewType::Search, View::new(search_windows, media_list, String::from("Search")))
 }
 
 fn init_home_view() -> (ViewType, View) {
@@ -118,5 +118,5 @@ fn init_home_view() -> (ViewType, View) {
         Window::new("Top".to_owned(), 0, ContentType::MediaContent(Arc::new(RwLock::new(vec![]))), Some(Box::new(table_info::VIDEO_HEADERS)), WindowType::TopVideos, Box::new(table_info::VIDEO_COLUMN_CONSTRAINTS)),
     ];
 
-    (ViewType::Home, View::new(home_windows, home_list))
+    (ViewType::Home, View::new(home_windows, home_list, String::from("Home")))
 }

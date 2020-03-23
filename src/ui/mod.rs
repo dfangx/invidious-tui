@@ -40,7 +40,10 @@ use crate::{
     app::App,
     player::Player,
 };
-use std::convert::AsRef;
+use std::{
+    convert::AsRef,
+    collections::VecDeque,
+};
 
 pub fn draw<B>(terminal: &mut Terminal<B>,
                mut app: &mut App
@@ -75,7 +78,7 @@ B: Backend,
         .constraints([
                      Constraint::Length(3),
                      Constraint::Min(1),
-                     Constraint::Length(6),
+                     Constraint::Length(5),
                      Constraint::Length(2),
         ].as_ref())
         .split(f.size())
@@ -97,33 +100,70 @@ fn draw_player<B>(f: &mut Frame<B>, area: Rect, app: &mut App)
     B: Backend,
 {
     let state = app.player.get_status();
-    Block::default()
-        .title(&state)
-        .borders(Borders::ALL)
-        .render(f, area);
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .margin(1)
         .constraints([
-                     Constraint::Length(3),
+                     Constraint::Length(4),
                      Constraint::Length(1),
         ].as_ref())
         .split(area);
 
-    if app.player.track_changed() {
-        app.current_track = match app.media_queue.pop_front() {
-            Some((title, author, playlist)) => {
-                match playlist {
-                    Some(pl) => format!("[{}] {} by {}\n", pl, title, author),
-                    None => format!("{} by {}\n", title, author)
-                }
-            },
-            None => String::from("None\n"),
-        };
+    if app.player.audio_changed() {
+        app.current_audio = get_current_media_text(&mut app.audio_queue);
     }
-    
-    app.next_track = match app.media_queue.front() {
+    if app.player.video_changed() {
+        app.current_video = get_current_media_text(&mut app.video_queue);
+    }
+
+    app.next_audio = get_next_media_text(&app.audio_queue);
+    app.next_video = get_next_media_text(&app.video_queue);
+
+    let audio_text = [
+        Text::styled("Current Track: ", Style::default().modifier(Modifier::BOLD)),
+        Text::raw(&app.current_audio),
+        Text::styled("Next Track: ", Style::default().modifier(Modifier::BOLD)),
+        Text::raw(&app.next_audio),
+    ];
+
+    let video_text = [
+        Text::styled("Current Video: ", Style::default().modifier(Modifier::BOLD)),
+        Text::raw(&app.current_video),
+        Text::styled("Next Video: ", Style::default().modifier(Modifier::BOLD)),
+        Text::raw(&app.next_video),
+    ];
+
+    let player_status_layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+                     Constraint::Percentage(50),
+                     Constraint::Percentage(50),
+        ].as_ref())
+        .split(chunks[0]);
+
+    let audio_title = format!("Audio Player: {}", state);
+    Paragraph::new(audio_text.iter())
+        .block(
+            Block::default()
+            .title(&audio_title)
+            .borders(Borders::ALL)
+            )
+        //.wrap(true)
+        .render(f, player_status_layout[0]);
+    Paragraph::new(video_text.iter())
+        .block(
+            Block::default()
+            .title("Video Player")
+            .borders(Borders::ALL)
+            )
+        //.wrap(true)
+        .render(f, player_status_layout[1]);
+
+    draw_progress_bar(f, chunks[1], &app.player);
+}
+
+fn get_current_media_text(queue: &mut VecDeque<(String, String, Option<String>)>) -> String {
+    match queue.pop_front() {
         Some((title, author, playlist)) => {
             match playlist {
                 Some(pl) => format!("[{}] {} by {}\n", pl, title, author),
@@ -131,20 +171,19 @@ fn draw_player<B>(f: &mut Frame<B>, area: Rect, app: &mut App)
             }
         },
         None => String::from("None\n"),
-    };
+    }
+}
 
-    let text = [
-        Text::styled("Currently Playing: ", Style::default().modifier(Modifier::BOLD)),
-        Text::raw(&app.current_track),
-        Text::styled("Next Track: ", Style::default().modifier(Modifier::BOLD)),
-        Text::raw(&app.next_track),
-    ];
-
-    Paragraph::new(text.iter())
-        .wrap(true)
-        .render(f, chunks[0]);
-
-    draw_progress_bar(f, chunks[1], &app.player);
+fn get_next_media_text(queue: &VecDeque<(String, String, Option<String>)>) -> String {
+    match queue.front() {
+        Some((title, author, playlist)) => {
+            match playlist {
+                Some(pl) => format!("[{}] {} by {}\n", pl, title, author),
+                None => format!("{} by {}\n", title, author)
+            }
+        },
+        None => String::from("None\n"),
+    }
 }
 
 fn draw_progress_bar<B>(f: &mut Frame<B>, area: Rect, player: &Player) 
@@ -240,6 +279,7 @@ fn draw_tabs<B>(f: &mut Frame<B>, area: Rect, tabs: &TabState)
 
     Tabs::default()
         .block(Block::default()
+               .title(&tabs.title)
                .borders(Borders::ALL))
         .titles(&tabs.items)
         .style(Style::default().fg(Color::White))

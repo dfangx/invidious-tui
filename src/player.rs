@@ -24,20 +24,18 @@ struct MpvResponse<T> {
     error: String,
 }
 
-pub enum ActivePlayer {
-    AudioPlayer,
-    VideoPlayer,
-    NoPlayer,
+#[derive(Deserialize, Debug)]
+struct MpvEvent {
+    event: String
 }
 
 pub struct Player {
     audio: MpvHandler,
     video: Option<UnixStream>,
-    active: ActivePlayer,
 }
 
 impl Player {
-    pub fn track_changed(&mut self) -> bool {
+    pub fn audio_changed(&mut self) -> bool {
         if let Some(event) = self.audio.wait_event(0.0) {
             if let Event::StartFile = event {
                 return true
@@ -45,7 +43,25 @@ impl Player {
         }
         false
     }
-    
+
+    pub fn video_changed(&mut self) -> bool {
+        if let Some(ref mut stream) = self.video {
+            let mut buf = [0; 1024];
+            if stream.read(&mut buf).is_ok() {
+                let json_str = std::str::from_utf8(&buf).unwrap().trim_end_matches('\0');
+                log::debug!("Event = {}", json_str);
+                if json_str.contains("end-file"){
+                    return false
+                }
+                
+                if json_str.contains("tracks-changed") {
+                    return true
+                }
+            }
+        }
+        false
+    }
+
     pub fn get_percent_pos(&self) -> u16 {
         match self.audio.get_property::<i64>("percent-pos") {
             Ok(percent) => return percent.try_into().unwrap_or(0),
@@ -53,23 +69,17 @@ impl Player {
         }
         0
     }
-    
+
     pub fn play(&mut self, url: String, is_video: bool) {
         if is_video {
-            if let ActivePlayer::AudioPlayer = self.active {
-                self.pause_audio();
-            }
-
-            self.active = ActivePlayer::VideoPlayer;
-            if self.video.is_some() {
-                self.stop();
-            }
+            self.pause_audio();
             let args = [
                 "--input-ipc-server=/tmp/mpvsocket", 
                 "--ytdl-format=bestvideo[height<=?720]+bestaudio/best",
                 "--no-terminal",
                 &url,
             ];
+            
             let res = Command::new("mpv")
                 .args(&args)
                 .spawn();
@@ -83,6 +93,7 @@ impl Player {
             loop {
                 match UnixStream::connect("/tmp/mpvsocket") {
                     Ok(stream) => {
+                        stream.set_nonblocking(true).unwrap();
                         log::info!("Connected to /tmp/mpvsocket");
                         self.video = Some(stream);
                         break;
@@ -95,54 +106,51 @@ impl Player {
             }
         }
         else {
-            if let ActivePlayer::VideoPlayer = self.active {
-                self.pause_video();
-            }
-            self.active = ActivePlayer::AudioPlayer;
+            self.pause_video();
+            
             match self.audio.command(&["loadfile", url.as_str()]) {
                 Ok(_) => log::info!("Succesfully launched player. Playing {}", url),
                 Err(e) => log::error!("Error loading {}: {}", url, e),
             }
+            self.resume_audio();
+        }
+    }
+    
+    pub fn toggle_loop_audio(&mut self) {
+        match self.audio.get_property::<&str>("loop") {
+            Ok(loop_value) => {
+                if loop_value == "no" {
+                    self.audio.set_option("loop", "inf").unwrap();
+                }
+                else {
+                    self.audio.set_option("loop", "no").unwrap();
+                }
+            },
+            Err(e) => log::error!("Unable to toggle loop: {}", e),
         }
     }
 
-    pub fn stop(&mut self) {
-        match self.active {
-            ActivePlayer::VideoPlayer => {
-                if let Some(ref mut stream) = self.video {
-                    let cmd = b"{ \"command\": [\"stop\"] }\n";
-                    match stream.write_all(cmd) {
-                        Ok(_) => log::info!("Sent 'stop' command"),
-                        Err(e) => log::error!("Failed to send command: {:#?}", e),
-                    }
-                    self.video = None;
-                }
-            },
-            ActivePlayer::AudioPlayer => {
-                match self.audio.command(&["stop"]) {
-                    Ok(_) => log::info!("Successfully stopped audio"),
-                    Err(e) => log::error!("Unable to stop audio: {}", e),
-                }
-            },
-            _ => {},
+    pub fn stop_video(&mut self) {
+        let cmd = "{ \"command\": [\"stop\"] }\n";
+        self.send_video_command(cmd);
+        self.video = None;
+    }
+
+    pub fn stop_audio(&mut self) {
+        match self.audio.command(&["stop"]) {
+            Ok(_) => log::info!("Successfully stopped audio"),
+            Err(e) => log::error!("Unable to stop audio: {}", e),
         }
     }
 
     pub fn stop_all(&mut self) {
-        self.active = ActivePlayer::AudioPlayer;
-        self.stop();
-        self.active = ActivePlayer::VideoPlayer;
-        self.stop()
+        self.stop_audio();
+        self.stop_video()
     }
 
     pub fn pause_video(&mut self) {
-        if let Some(ref mut stream) = self.video {
-            let cmd = b"{ \"command\": [\"set_property\", \"pause\", true] }\n";
-            match stream.write_all(cmd) {
-                Ok(_) => log::info!("Sent pause command"),
-                Err(e) => log::error!("Unable to send command: {:#?}", e),
-            }
-        }
+        let cmd = "{ \"command\": [\"set_property\", \"pause\", true] }\n";
+        self.send_video_command(cmd);
     }
 
     pub fn pause_audio(&mut self) {
@@ -152,10 +160,16 @@ impl Player {
         }
     }
 
-    pub fn resume_video(&mut self) {
+    pub fn _resume_video(&mut self) {
         if let Some(ref mut stream) = self.video {
             let cmd = b"{ \"command\": [\"set_property\", \"pause\", false] }\n";
-            stream.write_all(cmd).unwrap();
+            match stream.write_all(cmd) {
+                Ok(_) => log::info!("Sent pause command"),
+                Err(e) => {
+                    log::error!("Unable to send command: {:#?}", e);
+                    self.video = None;
+                },
+            }
         }
     }
 
@@ -165,59 +179,52 @@ impl Player {
             Err(e) => log::error!("Unable to resume audio: {}", e),
         }
     }
-    
-    pub fn toggle_playback(&mut self) {
-        match self.active {
-            ActivePlayer::VideoPlayer => {
-                if let Some(ref mut stream) = self.video {
-                    let cmd = b"{ \"command\": [\"get_property\", \"pause\"] }\n";
-                    stream.write_all(cmd).unwrap();
 
-                    let mut buf = [0; 1024];
-                    stream.read_exact(&mut buf).unwrap();
-                    let json_str = std::str::from_utf8(&buf).unwrap().trim_end_matches('\0');
-                    let mpv_response: MpvResponse<bool> = serde_json::from_str(&json_str).unwrap();
-                    if mpv_response.data {
-                        self.resume_video();
-                    }
-                    else {
+    pub fn toggle_audio_playback(&mut self) {
+        match self.audio.get_property("pause") {
+            Ok(pause) => {
+                if pause {
+                    if self.video.is_some() {
                         self.pause_video();
                     }
+                    
+                    self.resume_audio();
+                }
+                else {
+                    self.pause_audio();
                 }
             },
-            ActivePlayer::AudioPlayer => {
-                match self.audio.get_property("pause") {
-                    Ok(pause) => {
-                        if pause {
-                            self.resume_audio();
-                        }
-                        else {
-                            self.pause_audio();
-                        }
-                    },
-                    Err(e) => log::error!("Unable to get pause state: {}", e),
-                }
-            },
-            _ => {},
+            Err(e) => log::error!("Unable to get pause state: {}", e),
         }
     }
 
-    pub fn queue(&mut self, url: String) {
-        match self.active {
-            ActivePlayer::VideoPlayer => {
-                if let Some(ref mut stream) = self.video {
-                    let cmd = b"{ \"command\": [\"loadfile\", \"append-play\"] }\n";
-                    stream.write_all(cmd).unwrap();
-                }
-            },
-            ActivePlayer::AudioPlayer => {
-                match self.audio.command(&["loadfile", url.as_str(), "append-play"]) {
-                    Ok(_) => log::info!("Succesfully queued track {}", url),
-                    Err(e) => log::error!("Unable to queue track {}: {}", url, e),
-                }
+    pub fn _toggle_video_playback(&mut self) {
+        if let Some(ref mut stream) = self.video {
+            let cmd = b"{ \"command\": [\"get_property\", \"pause\"] }\n";
+            stream.write_all(cmd).unwrap();
+            let mut buf = [0; 1024];
+            stream.read_exact(&mut buf).unwrap();
+            let json_str = std::str::from_utf8(&buf).unwrap().trim_end_matches('\0');
+            let mpv_response: MpvResponse<bool> = serde_json::from_str(&json_str).unwrap();
+            if mpv_response.data {
+                self._resume_video();
             }
-            _ => {},
+            else {
+                self.pause_video();
+            }
         }
+    }
+
+    pub fn queue_audio(&mut self, url: String) {
+        match self.audio.command(&["loadfile", url.as_str(), "append-play"]) {
+            Ok(_) => log::info!("Succesfully queued track {}", url),
+            Err(e) => log::error!("Unable to queue track {}: {}", url, e),
+        }
+    }
+    
+    pub fn queue_video(&mut self, url: String) {
+        let cmd = format!("{{ \"command\": [\"loadfile\", \"{}\", \"append-play\"] }}\n", url);
+        self.send_video_command(&cmd);
     }
 
     pub fn get_status(&self) -> String {
@@ -231,12 +238,27 @@ impl Player {
                         if is_paused {
                             return String::from("Paused") 
                         }
-                        return String::from("Playing")
+                        
+                        let is_looped = match self.audio.get_property::<&str>("loop") {
+                            Ok(loop_value) => {
+                                if loop_value != "no" {
+                                    "(Looped)"
+                                }
+                                else {
+                                    ""
+                                }
+                            },
+                            Err(e) => {
+                                log::error!("Unable to toggle loop: {}", e);
+                                ""
+                            },
+                        };
+                        format!("Playing {}", is_looped)
                     },
-                    Err(_) => return String::from("Idle"),
+                    Err(_) => String::from("Idle"),
                 }
             },
-            Err(_) => return String::from("Idle")
+            Err(_) => String::from("Idle")
         }
     }
 
@@ -252,7 +274,7 @@ impl Player {
             },
             Err(_) => String::from("00:00:00")
         };
-        
+
         let duration = match self.audio.get_property::<i64>("duration") {
             Ok(time) => {
                 let seconds = time;
@@ -267,7 +289,7 @@ impl Player {
 
         format!("{} / {}", time, duration)
     }
-    
+
     pub fn init_audio() -> Result<MpvHandler, Error> {
         let mut mpv_builder = MpvHandlerBuilder::new()?;
         mpv_builder.set_option("osc", true)?;
@@ -279,6 +301,16 @@ impl Player {
         mpv.set_property("speed", 1.0)?;
         Ok(mpv)
     }
+
+    fn send_video_command(&mut self, cmd: &str) {
+        if let Some(ref mut stream) = self.video {
+            match stream.write_all(cmd.as_bytes()) {
+                Ok(_) => log::info!("Sent command: {:#?}", cmd),
+                Err(e) => log::error!("Unable to send command: {:#?}", e),
+            }
+        }
+    }
+
 }
 
 impl Default for Player {
@@ -286,16 +318,6 @@ impl Default for Player {
         Player {
             audio: Player::init_audio().unwrap(),
             video: None,
-            active: ActivePlayer::NoPlayer,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn toggle_play() {
-        use crate::player;
-        player::toggle_play_video();
     }
 }
