@@ -9,7 +9,7 @@ documentation = "https://github.com/dfangx/invidious-tui"
 repository = "https://github.com/dfangx/invidious-tui"
 readme = "README.md"
 license = "MIT OR Apache"
-keywords = ["video", "invidious", "youtube"]
+keywords = ["video", "invidious", "youtube", "tui", "cli", "terminal"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
