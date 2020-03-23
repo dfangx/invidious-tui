@@ -29,11 +29,12 @@ l | Next tab
 j | Move selection down
 k | Move selection up
 z | View Invidious home
-x | View search results
-Space | Toggle play/pause
+x | View search view
+Space | Toggle play/pause (for audio player only)
 Enter | Play selection with video (for videos and playlists)
+v | Queue a selection with video (for videos and playlists)
 a | Play selection audio only (for videos and playlists)
-p | Queue selection
+A | Queue a selection audio only (for videos and playlists)
 o | Open selection
 
 ## Configuration
