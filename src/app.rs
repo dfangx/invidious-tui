@@ -68,7 +68,7 @@ impl App {
             quit: false,
             audio_queue: VecDeque::new(),
             video_queue: VecDeque::new(),
-            
+             
             focused_view: ViewType::Home,
             view_list: HashMap::new(),
             clipboard: ClipboardProvider::new().unwrap(),

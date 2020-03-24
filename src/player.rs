@@ -137,6 +137,20 @@ impl Player {
         }
     }
 
+    pub fn toggle_loop_playlist_audio(&mut self) {
+        match self.audio.get_property::<&str>("loop-playlist") {
+            Ok(loop_value) => {
+                if loop_value == "no" {
+                    self.audio.set_option("loop-playlist", "inf").unwrap();
+                }
+                else {
+                    self.audio.set_option("loop-playlist", "no").unwrap();
+                }
+            },
+            Err(e) => log::error!("Unable to toggle loop: {}", e),
+        }
+    }
+    
     pub fn stop_video(&mut self) {
         let cmd = "{ \"command\": [\"stop\"] }\n";
         self.send_video_command(cmd);
@@ -249,7 +263,7 @@ impl Player {
                         let is_looped = match self.audio.get_property::<&str>("loop") {
                             Ok(loop_value) => {
                                 if loop_value != "no" {
-                                    "(Looped)"
+                                    "LT"
                                 }
                                 else {
                                     ""
@@ -260,7 +274,33 @@ impl Player {
                                 ""
                             },
                         };
-                        format!("Playing {}", is_looped)
+                        let is_looped_playlist = match self.audio.get_property::<&str>("loop-playlist") {
+                            Ok(loop_value) => {
+                                if loop_value != "no" {
+                                    "LP"
+                                }
+                                else {
+                                    ""
+                                }
+                            },
+                            Err(e) => {
+                                log::error!("Unable to toggle loop playlist: {}", e);
+                                ""
+                            },
+                        };
+
+                        if !is_looped_playlist.is_empty() && !is_looped.is_empty() {
+                            format!("Playing ({} | {})", is_looped_playlist, is_looped)
+                        }
+                        else if !is_looped_playlist.is_empty()  {
+                            format!("Playing ({})", is_looped_playlist)
+                        }
+                        else if !is_looped.is_empty() {
+                            format!("Playing ({})", is_looped)
+                        }
+                        else {
+                            format!("Playing")
+                        }
                     },
                     Err(_) => String::from("Idle"),
                 }

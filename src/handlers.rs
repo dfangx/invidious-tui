@@ -272,6 +272,9 @@ pub fn event_handler<B: Backend>(key: Key, mut app: &mut App, _terminal: &mut Te
     else if key == app.config.keys.loop_audio {
         app.player.toggle_loop_audio();
     }
+    else if key == app.config.keys.loop_playlist_audio {
+        app.player.toggle_loop_playlist_audio();
+    }
     else if key == app.config.keys.copy_url {
         if let Some(root_view) = app.view_list.get_mut(&app.focused_view) {
             if let Some(view) = root_view.get_current_view_mut() {

@@ -85,6 +85,7 @@ impl View {
         }
     }
 
+
     pub fn pop_stack(&mut self) {
         if !self.view_stack.is_empty() {
             self.view_stack.pop(); 

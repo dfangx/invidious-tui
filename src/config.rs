@@ -27,6 +27,7 @@ pub struct Keybinds {
     pub seek_audio_forward: Key,
     pub seek_audio_backward: Key,
     pub queue_view: Key,
+    pub loop_playlist_audio: Key,
 }
 
 impl Default for Keybinds {
@@ -51,6 +52,7 @@ impl Default for Keybinds {
             audio_only: Key::Char('a'),
             queue_audio: Key::Char('A'),
             loop_audio: Key::Char('L'),
+            loop_playlist_audio: Key::Char(';'),
             seek_audio_forward: Key::Right,
             seek_audio_backward: Key::Left,
             
@@ -87,6 +89,7 @@ pub struct KeybindsAsStr {
     pub seek_audio_forward: String,
     pub seek_audio_backward: String,
     pub queue_view: String,
+    pub loop_playlist_audio: String,
 }
 
 impl Default for KeybindsAsStr {
@@ -110,6 +113,7 @@ impl Default for KeybindsAsStr {
             audio_only: String::from("a"),
             queue_audio: String::from("A"),
             loop_audio: String::from("L"),
+            loop_playlist_audio: String::from(";"),
             
             open_selection: String::from("o"),
             submit_entry: String::from("enter"),
@@ -124,10 +128,6 @@ impl Default for KeybindsAsStr {
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub client_id: String,
-    pub client_secret: String,
-    username: String,
-    password: String,
     pub keybinds: KeybindsAsStr,
 
     #[serde(skip_deserializing)]
@@ -167,6 +167,7 @@ impl Config {
             home_view: Self::str_to_key(&mut keybinds_as_str.home_view),
             search_view: Self::str_to_key(&mut keybinds_as_str.search_view),
             loop_audio: Self::str_to_key(&mut keybinds_as_str.loop_audio),
+            loop_playlist_audio: Self::str_to_key(&mut keybinds_as_str.loop_playlist_audio),
             copy_url: Self::str_to_key(&mut keybinds_as_str.copy_url),
             seek_audio_forward: Self::str_to_key(&mut keybinds_as_str.seek_audio_forward),
             seek_audio_backward: Self::str_to_key(&mut keybinds_as_str.seek_audio_backward),
@@ -232,10 +233,6 @@ impl Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            client_id: String::new(),
-            client_secret: String::new(),
-            username: String::new(),
-            password: String::new(),
             keys: Keybinds::default(),
             keybinds: KeybindsAsStr::default(),
         }
