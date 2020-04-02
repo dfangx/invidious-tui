@@ -343,6 +343,7 @@ impl Player {
         mpv_builder.set_option("sid", "no")?;
         mpv_builder.set_option("ytdl-format", "bestvideo[height<=?720]+bestaudio/best")?;
         mpv_builder.set_option("video", "no")?;
+        mpv_builder.set_option("x11-netwm", "yes")?;
 
         let mut mpv = mpv_builder.build()?;
         mpv.set_property("speed", 1.0)?;
